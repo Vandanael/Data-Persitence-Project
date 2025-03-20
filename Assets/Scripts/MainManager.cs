@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using TMPro;
 
 public class MainManager : MonoBehaviour
 {
@@ -10,22 +11,26 @@ public class MainManager : MonoBehaviour
     public int LineCount = 6;
     public Rigidbody Ball;
 
+    // Existing UI elements
     public Text ScoreText;
     public GameObject GameOverText;
-    
+
+    // New UI elements
+    public TextMeshProUGUI PlayerNameText;
+    public TextMeshProUGUI HighScoreText;
+
+    // Reference to High Score UI (if you're using it)
+    public HighScoreUI highScoreUI;
+
     private bool m_Started = false;
     private int m_Points;
-    
     private bool m_GameOver = false;
 
-    
-    // Start is called before the first frame update
     void Start()
     {
         const float step = 0.6f;
         int perLine = Mathf.FloorToInt(4.0f / step);
-        
-        int[] pointCountArray = new [] {1,1,2,2,5,5};
+        int[] pointCountArray = new[] { 1, 1, 2, 2, 5, 5 };
         for (int i = 0; i < LineCount; ++i)
         {
             for (int x = 0; x < perLine; ++x)
@@ -35,6 +40,13 @@ public class MainManager : MonoBehaviour
                 brick.PointValue = pointCountArray[i];
                 brick.onDestroyed.AddListener(AddPoint);
             }
+        }
+
+        // Display player name and high score
+        if (DataManager.Instance != null)
+        {
+            PlayerNameText.text = "Player: " + DataManager.Instance.PlayerName;
+            UpdateHighScoreText();
         }
     }
 
@@ -48,7 +60,6 @@ public class MainManager : MonoBehaviour
                 float randomDirection = Random.Range(-1.0f, 1.0f);
                 Vector3 forceDir = new Vector3(randomDirection, 1, 0);
                 forceDir.Normalize();
-
                 Ball.transform.SetParent(null);
                 Ball.AddForce(forceDir * 2.0f, ForceMode.VelocityChange);
             }
@@ -68,9 +79,44 @@ public class MainManager : MonoBehaviour
         ScoreText.text = $"Score : {m_Points}";
     }
 
+    private void UpdateHighScoreText()
+    {
+        if (DataManager.Instance != null && DataManager.Instance.HighScores.Count > 0)
+        {
+            // Get the top score (the first one in the sorted list)
+            HighScoreEntry topScore = DataManager.Instance.HighScores[0];
+            HighScoreText.text = "Best Score: " + topScore.score +
+                             " by " + topScore.playerName;
+        }
+        else
+        {
+            HighScoreText.text = "Best Score: 0";
+        }
+    }
+
     public void GameOver()
     {
         m_GameOver = true;
         GameOverText.SetActive(true);
+
+        // Save score when game is over
+        if (DataManager.Instance != null)
+        {
+            DataManager.Instance.SaveScore(m_Points);
+
+            // Update the high score display
+            UpdateHighScoreText();
+
+            // Update the high score UI if it exists
+            if (highScoreUI != null)
+            {
+                highScoreUI.UpdateHighScoreUI();
+            }
+        }
+    }
+
+    public void BackToMenu()
+    {
+        SceneManager.LoadScene(0); // Load the Start Menu scene
     }
 }
